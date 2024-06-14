@@ -74,8 +74,39 @@ void massPlot(TString file="data/AnalysisResults_treesAP_data.root", TString tre
         return invariantmass;
     };
 
-    // get the final data frame
-    auto complete_df = new_column.Define("invariantmass", invariantmass, {"alpha", "fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    auto invariantmass_K0 = [&](float posx, float posy, float posz, float negx, float negy, float negz){
+        float massPos;
+        float massNeg;
+
+        //define vectors for momenta and calclate the length 
+        TVector3 pPos(posx,posy,posz);
+        TVector3 pNeg(negx,negy,negz);
+        TVector3 momentum=pPos+pNeg;
+        float pPos_norm=sqrt(pPos.Dot(pPos));
+        float pNeg_norm=sqrt(pNeg.Dot(pNeg));
+        float momentum_norm=sqrt(momentum.Dot(momentum));
+
+
+        // decays in pi+ and pi-, masses are equal
+        massPos=massPion;
+        massNeg=massPion;
+
+        // use mass and momentum to calculate the energy of the two particles
+        float EPos=sqrt(pow(pPos_norm,2.)+pow((massPos),2.));
+        float ENeg=sqrt(pow(pNeg_norm,2.)+pow((massNeg),2.));
+
+        // total energy 
+        float Energy = EPos + ENeg;
+
+        // calculate the invariant mass using the fourmomentum vector
+        float invariantmass = sqrt((pow(Energy,2.)-pow(momentum_norm,2.)));
+
+        return invariantmass;
+    };
+
+    // get the two possible invariant masses
+    auto new_minv = new_column.Define("Minv_lambda", invariantmass, {"alpha", "fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    auto complete_df = new_minv.Define("Minv_K0", invariantmass_K0, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
 
     // plot the two new variables
     auto h1 = complete_df.Histo1D("alpha");
@@ -83,9 +114,14 @@ void massPlot(TString file="data/AnalysisResults_treesAP_data.root", TString tre
     h1->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
 
-    auto h2 = complete_df.Histo1D("invariantmass");
+    auto h2 = complete_df.Histo1D("Minv_lambda");
     TCanvas * c2 = new TCanvas("c2", "c2", 600, 600);
     h2->DrawClone();
+    gROOT->GetListOfCanvases()->Draw();
+
+    auto h3 = complete_df.Histo1D("Minv_K0");
+    TCanvas * c3 = new TCanvas("c3", "c3", 600, 600);
+    h3->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
 
 
