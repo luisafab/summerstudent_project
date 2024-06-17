@@ -131,7 +131,55 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
 
     // add both masses as new column
     auto new_minv_l = new_column_pT.Define("Minv_lambda", invariantmass_lambda, {"alpha", "fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
-    auto complete_df = new_minv_l.Define("Minv_K0", invariantmass_K0, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    auto new_minv_k0 = new_minv_l.Define("Minv_K0", invariantmass_K0, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+
+    // use mass to filter the data
+    // define values to cut on both peaks 
+    // lambda peak should be      1.1115683
+    // K0 short peak should be    0.497164
+    // 1.107 1.116 0.493 0.5012
+    // 1.108 1.115 0.494 0.5011
+    // 1.101 1.120 0.4925 0.5017 
+    // 1.101 1.120 0.485 0.505
+    // 1.112 1.120 0.485 0.505
+    // 1.101 1.119 0.488 0.505
+    float lambda_low=1.112;
+    float lambda_high=1.119;
+    float K0_high=0.505;
+    float K0_low=0.488;
+    // use lambda function
+    auto insidePeakK =[&](float Minv){
+        bool isInside;
+        float low=K0_low; 
+        float high=K0_high;
+        if (Minv>low && Minv < high){
+            isInside=true;
+        }else{
+            isInside=false;
+        }
+        return isInside;
+    };
+    auto insidePeakL =[&](float Minv){
+        bool isInside;
+        float low=lambda_low; 
+        float high=lambda_high;
+        if (Minv>low && Minv < high){
+            isInside=true;
+        }else{
+            isInside=false;
+        }
+        return isInside;
+    };
+    auto outsidePeakL =[&](float Minv){
+        return !insidePeakL(Minv);
+    };
+    // one filter just to ckeck on lambdas, not needed for the result in the end
+    auto new_filter_l = new_minv_k0.Filter(insidePeakL, {"Minv_lambda"});
+    // filter on K0s
+    auto new_filter_k = new_minv_k0.Filter(insidePeakK, {"Minv_K0"});
+    // filter on particles which are in both peaks to reduce possible background 
+    auto complete_df = new_filter_k.Filter(outsidePeakL, {"Minv_lambda"});
+
 
 
     // plot the different variables
@@ -155,9 +203,14 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     h4->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
 
+    auto h5 = new_filter_l.Histo1D("Minv_lambda");
+    TCanvas * c5 = new TCanvas("c5", "c5", 600, 600);
+    h5->DrawClone();
+    gROOT->GetListOfCanvases()->Draw();
+
 
     // define and plot a histogram which is the armenteros plot
-    TH2D *h = new TH2D("h","Armenteros-Podolanski Plot",100,-1.,1.,40,0.,0.2);
+    TH2D *h = new TH2D("h","Armenteros-Podolanski Plot",100,-1.,1.,40,0.,0.25);
     
     auto histo = complete_df.Histo2D(*h,"alpha","pT");
 
@@ -166,6 +219,18 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
 
     TCanvas * c = new TCanvas("c", "c", 900, 600);
     histo->DrawClone();
+    gROOT->GetListOfCanvases()->Draw();
+
+    // this one should only contain the lambdas
+    TH2D *h0 = new TH2D("h","Armenteros-Podolanski Plot",100,-1.,1.,40,0.,0.2);
+    
+    auto histo1 = new_filter_l.Histo2D(*h0,"alpha","pT");
+
+    histo->GetXaxis()->SetTitle("alpha");
+    histo->GetYaxis()->SetTitle("pT");
+
+    TCanvas * c0 = new TCanvas("c0", "c0", 900, 600);
+    histo1->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
 
 }
