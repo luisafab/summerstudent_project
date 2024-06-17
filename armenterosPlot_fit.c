@@ -181,7 +181,6 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     auto complete_df = new_filter_k.Filter(outsidePeakL, {"Minv_lambda"});
 
 
-
     // plot the different variables
     auto h1 = complete_df.Histo1D("alpha");
     TCanvas * c1 = new TCanvas("c1", "c1", 600, 600);
@@ -232,5 +231,51 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     TCanvas * c0 = new TCanvas("c0", "c0", 900, 600);
     histo1->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
+
+    // fit gaussian to bins of alpha
+
+    // number of bins to fit
+    const Int_t n = 20;
+    // and resulting stepsize
+    float stepsize=2./n;
+
+    double x[n];
+    double xerr[n];
+
+    double plotvalues[2][n];
+
+    for (int i = 0; i < n; i+=1) {
+        // calculate x
+        // use part of histogram the histogram which corresponds to one bin
+        TH2D *h_temp = new TH2D("h","Armenteros-Podolanski Plot",5,-1+i*0.1,-1+(i+1)*0.1,40,0.,0.25);
+        auto histo_temp = complete_df.Histo2D(*h_temp,"alpha","pT");
+
+        // project to y axis
+        TH1D *histo_bin = histo_temp->ProjectionY("projection",1,5);
+
+        // use gaus to fit
+        TF1 *f2 = new TF1("f2", "gaus");
+        histo_bin->Fit(f2);
+        // use mean-2sigma as a new fitting range
+        double mean=f2->GetParameter(1);
+        double sigma = f2->GetParameter(2);
+        // second fit
+        histo_bin->Fit(f2, "R", "", mean-2*sigma, mean+2*sigma);
+        // save mean and corresponding error for the plot
+        plotvalues[0][i]=f2->GetParameter(1);
+        plotvalues[1][i]=f2->GetParError(1);
+
+        // calculate values to plot for alpha 
+        // middle of the bin
+        x[i]=-1+i*0.1+0.05;
+        // error is the distance to next point 
+        xerr[i]=0.05; 
+    }
+
+    // plot the values
+    auto c20 = new TCanvas("c20","A Simple Graph with error bars",900,600); 
+    auto gr = new TGraphErrors(20,x,plotvalues[0],xerr,plotvalues[1]);
+    gr->SetTitle("Armenteros Podolanski plot from fitting to bins");
+    gr->Draw("AP");
 
 }
