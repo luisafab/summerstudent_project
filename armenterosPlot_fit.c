@@ -17,6 +17,7 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     //     for MC==true only the recombined (isreco==true) lambdas (PDGCODE=3122) are considered
     //     else there is a dummy cut to use the same dataframe
     auto df = df_MC.Filter(MC? "(fPDGCode == 3122 || fPDGCode== -3122) && fIsReco" : "fLen>0");
+    std::cout<<"filtered PDG"<<std::endl;
 
     // lambda functions to calculate the variables of the AP Plot: alpha and pT
     // takes the momenta of the negative and positive particle as argument
@@ -55,8 +56,10 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
 
     // define new columns with the two new variables 
     auto new_column_alpha = df.Define("alpha", alpha, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    std::cout<<"Calculated alpha"<<std::endl;
     // get the final data frame
     auto new_column_pT = new_column_alpha.Define("pT", pT, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    std::cout<<"calculated pT"<<std::endl;
 
     // calculation of the invariant mass of lambdas
     auto invariantmass_lambda = [&](float alpha, float posx, float posy, float posz, float negx, float negy, float negz){
@@ -131,7 +134,9 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
 
     // add both masses as new column
     auto new_minv_l = new_column_pT.Define("Minv_lambda", invariantmass_lambda, {"alpha", "fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    std::cout<<"Calculated inv mass lambda"<<std::endl;
     auto new_minv_k0 = new_minv_l.Define("Minv_K0", invariantmass_K0, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    std::cout<<"Calculated invariant mass K0"<<std::endl;
 
     // use mass to filter the data
     // define values to cut on both peaks 
@@ -143,10 +148,11 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     // 1.101 1.120 0.485 0.505
     // 1.112 1.120 0.485 0.505
     // 1.101 1.119 0.488 0.505
+    // 1.112 1.119 0.488 0.505
     float lambda_low=1.112;
     float lambda_high=1.119;
-    float K0_high=0.505;
     float K0_low=0.488;
+    float K0_high=0.505;
     // use lambda function
     auto insidePeakK =[&](float Minv){
         bool isInside;
@@ -175,10 +181,13 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     };
     // one filter just to ckeck on lambdas, not needed for the result in the end
     auto new_filter_l = new_minv_k0.Filter(insidePeakL, {"Minv_lambda"});
+    std::cout<<"Filter 1"<<std::endl;
     // filter on K0s
     auto new_filter_k = new_minv_k0.Filter(insidePeakK, {"Minv_K0"});
+    std::cout<<"Filter 2"<<std::endl;
     // filter on particles which are in both peaks to reduce possible background 
     auto complete_df = new_filter_k.Filter(outsidePeakL, {"Minv_lambda"});
+    std::cout<<"Filter 3"<<std::endl;
 
 
     // plot the different variables
@@ -207,11 +216,13 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     h5->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
 
-
+    
     // define and plot a histogram which is the armenteros plot
+    std::cout<<"start AP plot"<<std::endl;
     TH2D *h = new TH2D("h","Armenteros-Podolanski Plot",100,-1.,1.,40,0.,0.25);
     
     auto histo = complete_df.Histo2D(*h,"alpha","pT");
+    std::cout<<"plotted histogramm"<<std::endl;
 
     histo->GetXaxis()->SetTitle("alpha");
     histo->GetYaxis()->SetTitle("pT");
@@ -221,9 +232,11 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     gROOT->GetListOfCanvases()->Draw();
 
     // this one should only contain the lambdas
+    std::cout<<"start AP plot 2"<<std::endl;
     TH2D *h0 = new TH2D("h","Armenteros-Podolanski Plot",100,-1.,1.,40,0.,0.2);
     
     auto histo1 = new_filter_l.Histo2D(*h0,"alpha","pT");
+    std::cout<<"Plotted"<<std::endl;
 
     histo->GetXaxis()->SetTitle("alpha");
     histo->GetYaxis()->SetTitle("pT");
@@ -231,7 +244,7 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     TCanvas * c0 = new TCanvas("c0", "c0", 900, 600);
     histo1->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
-
+    
     // fit gaussian to bins of alpha
 
     // number of bins to fit
@@ -244,23 +257,29 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
 
     double plotvalues[2][n];
 
+    std::cout<<"Start slicing"<<std::endl;
     for (int i = 0; i < n; i+=1) {
         // calculate x
         // use part of histogram the histogram which corresponds to one bin
+        std::cout<<"Start plotting"<<std::endl;
         TH2D *h_temp = new TH2D("h","Armenteros-Podolanski Plot",5,-1+i*0.1,-1+(i+1)*0.1,40,0.,0.25);
         auto histo_temp = complete_df.Histo2D(*h_temp,"alpha","pT");
+        std::cout<<"created histogramm"<<std::endl;
 
         // project to y axis
         TH1D *histo_bin = histo_temp->ProjectionY("projection",1,5);
+        std::cout<<"Created projection"<<std::endl;
 
         // use gaus to fit
         TF1 *f2 = new TF1("f2", "gaus");
         histo_bin->Fit(f2);
+        std::cout<<"Fitted"<<std::endl;
         // use mean-2sigma as a new fitting range
         double mean=f2->GetParameter(1);
         double sigma = f2->GetParameter(2);
         // second fit
         histo_bin->Fit(f2, "R", "", mean-2*sigma, mean+2*sigma);
+        std::cout<<"Fitted 2"<<std::endl;
         // save mean and corresponding error for the plot
         plotvalues[0][i]=f2->GetParameter(1);
         plotvalues[1][i]=f2->GetParError(1);
@@ -273,7 +292,7 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     }
 
     // plot the values
-    auto c20 = new TCanvas("c20","A Simple Graph with error bars",900,600); 
+    auto c20 = new TCanvas("c20","AP Plot",900,600); 
     auto gr = new TGraphErrors(20,x,plotvalues[0],xerr,plotvalues[1]);
     gr->SetTitle("Armenteros Podolanski plot from fitting to bins");
     gr->Draw("AP");
