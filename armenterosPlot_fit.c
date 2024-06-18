@@ -138,6 +138,22 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     auto new_minv_k0 = new_minv_l.Define("Minv_K0", invariantmass_K0, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
     std::cout<<"Calculated invariant mass K0"<<std::endl;
 
+    // create histograms to filter using gaus fit
+    auto hL = new_minv_k0.Histo1D("Minv_lambda");
+    auto hK0 = new_minv_k0.Histo1D("Minv_K0");
+
+    // fit gaus to lambda peak 
+    TF1 *f_g = new TF1("gaus fit", "gaus");
+    // restrict to area around expected peak
+    hL->Fit(f_g,"","",1.09,1.13);
+    double mean_L=f_g->GetParameter(1);
+    double sigma_L=f_g->GetParameter(2);
+
+    // fit gaus to k0 peak
+    hK0->Fit(f_g,"","",0.4,0.6);
+    double mean_K=f_g->GetParameter(1);
+    double sigma_K=f_g->GetParameter(2);
+
     // use mass to filter the data
     // define values to cut on both peaks 
     // lambda peak should be      1.1115683
@@ -149,10 +165,10 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     // 1.112 1.120 0.485 0.505
     // 1.101 1.119 0.488 0.505
     // 1.112 1.119 0.488 0.505
-    float lambda_low=1.112;
-    float lambda_high=1.119;
-    float K0_low=0.488;
-    float K0_high=0.505;
+    float lambda_low=mean_L-sigma_L;
+    float lambda_high=mean_L+sigma_L;
+    float K0_low=mean_K-sigma_K;
+    float K0_high=mean_K+sigma_K;
     // use lambda function
     auto insidePeakK =[&](float Minv){
         bool isInside;
@@ -191,7 +207,7 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
 
 
     // plot the different variables
-    auto h1 = complete_df.Histo1D("alpha");
+    /*auto h1 = complete_df.Histo1D("alpha");
     TCanvas * c1 = new TCanvas("c1", "c1", 600, 600);
     h1->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
@@ -199,17 +215,17 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     auto h2 = complete_df.Histo1D("pT");
     TCanvas * c2 = new TCanvas("c2", "c2", 600, 600);
     h2->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();
+    gROOT->GetListOfCanvases()->Draw();*/
 
     auto h3 = complete_df.Histo1D("Minv_K0");
     TCanvas * c3 = new TCanvas("c3", "c3", 600, 600);
     h3->DrawClone();
     gROOT->GetListOfCanvases()->Draw();
 
-    auto h4 = complete_df.Histo1D("Minv_lambda");
+    /*auto h4 = complete_df.Histo1D("Minv_lambda");
     TCanvas * c4 = new TCanvas("c4", "c4", 600, 600);
     h4->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();
+    gROOT->GetListOfCanvases()->Draw();*/
 
     auto h5 = new_filter_l.Histo1D("Minv_lambda");
     TCanvas * c5 = new TCanvas("c5", "c5", 600, 600);
@@ -296,5 +312,5 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     auto gr = new TGraphErrors(20,x,plotvalues[0],xerr,plotvalues[1]);
     gr->SetTitle("Armenteros Podolanski plot from fitting to bins");
     gr->Draw("AP");
-
+    
 }
