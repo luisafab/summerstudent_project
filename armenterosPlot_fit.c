@@ -6,7 +6,10 @@
 // bool MC : true : only lambda events are consicered (!! The MC Information in the file is necessary !!)
 //           false : all events are considered
 
-void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", TString tree="O2v0tableap",bool MC=false) {
+void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", TString tree="O2v0tableap",bool MC=false, TString file_save="results.root") {
+
+    // saving plots in a root file
+    std::unique_ptr<TFile> myFile( TFile::Open("results_fit.root", "RECREATE") );
 
     float massProton=0.9382720813;
     float massPion= 0.13957061;
@@ -149,10 +152,14 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     double mean_L=f_g->GetParameter(1);
     double sigma_L=f_g->GetParameter(2);
 
+    hL->Write();
+
     // fit gaus to k0 peak
     hK0->Fit(f_g,"","",0.4,0.6);
     double mean_K=f_g->GetParameter(1);
     double sigma_K=f_g->GetParameter(2);
+    
+    hK0->Write();
 
     // use mass to filter the data
     // define values to cut on both peaks 
@@ -207,59 +214,47 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
 
 
     // plot the different variables
-    /*auto h1 = complete_df.Histo1D("alpha");
-    TCanvas * c1 = new TCanvas("c1", "c1", 600, 600);
-    h1->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();
+    auto h_alpha = complete_df.Histo1D("alpha");
+    h_alpha->Write();
 
-    auto h2 = complete_df.Histo1D("pT");
-    TCanvas * c2 = new TCanvas("c2", "c2", 600, 600);
-    h2->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();*/
+    auto h_pT = complete_df.Histo1D("pT");
+    h_pT->Write();
 
-    auto h3 = complete_df.Histo1D("Minv_K0");
-    TCanvas * c3 = new TCanvas("c3", "c3", 600, 600);
-    h3->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();
+    auto h_MK0 = complete_df.Histo1D("Minv_K0");
+    h_MK0->Write();
 
     /*auto h4 = complete_df.Histo1D("Minv_lambda");
     TCanvas * c4 = new TCanvas("c4", "c4", 600, 600);
     h4->DrawClone();
     gROOT->GetListOfCanvases()->Draw();*/
 
-    auto h5 = new_filter_l.Histo1D("Minv_lambda");
-    TCanvas * c5 = new TCanvas("c5", "c5", 600, 600);
-    h5->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();
+    auto h_ML = new_filter_l.Histo1D("Minv_lambda");
+    h_ML->Write();
 
     
     // define and plot a histogram which is the armenteros plot
     std::cout<<"start AP plot"<<std::endl;
     TH2D *h = new TH2D("h","Armenteros-Podolanski Plot",100,-1.,1.,40,0.,0.25);
     
-    auto histo = complete_df.Histo2D(*h,"alpha","pT");
+    auto AP = complete_df.Histo2D(*h,"alpha","pT");
     std::cout<<"plotted histogramm"<<std::endl;
 
-    histo->GetXaxis()->SetTitle("alpha");
-    histo->GetYaxis()->SetTitle("pT");
+    AP->GetXaxis()->SetTitle("alpha");
+    AP->GetYaxis()->SetTitle("pT");
 
-    TCanvas * c = new TCanvas("c", "c", 900, 600);
-    histo->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();
+    AP->Write();
 
     // this one should only contain the lambdas
     std::cout<<"start AP plot 2"<<std::endl;
     TH2D *h0 = new TH2D("h","Armenteros-Podolanski Plot",100,-1.,1.,40,0.,0.2);
     
-    auto histo1 = new_filter_l.Histo2D(*h0,"alpha","pT");
+    auto AP_lambda = new_filter_l.Histo2D(*h0,"alpha","pT");
     std::cout<<"Plotted"<<std::endl;
 
-    histo->GetXaxis()->SetTitle("alpha");
-    histo->GetYaxis()->SetTitle("pT");
+    AP_lambda->GetXaxis()->SetTitle("alpha");
+    AP_lambda->GetYaxis()->SetTitle("pT");
 
-    TCanvas * c0 = new TCanvas("c0", "c0", 900, 600);
-    histo1->DrawClone();
-    gROOT->GetListOfCanvases()->Draw();
+    AP_lambda->Write();
     
     // fit gaussian to bins of alpha
 
@@ -290,6 +285,8 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
         TF1 *f2 = new TF1("f2", "gaus");
         histo_bin->Fit(f2);
         std::cout<<"Fitted"<<std::endl;
+
+        histo_bin->Write();
         // use mean-2sigma as a new fitting range
         double mean=f2->GetParameter(1);
         double sigma = f2->GetParameter(2);
@@ -300,6 +297,8 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
         plotvalues[0][i]=f2->GetParameter(1);
         plotvalues[1][i]=f2->GetParError(1);
 
+        histo_bin->Write();
+
         // calculate values to plot for alpha 
         // middle of the bin
         x[i]=-1+i*0.1+0.05;
@@ -308,9 +307,9 @@ void armenterosPlot_fit(TString file="data/AnalysisResults_treesAP_data.root", T
     }
 
     // plot the values
-    auto c20 = new TCanvas("c20","AP Plot",900,600); 
     auto gr = new TGraphErrors(20,x,plotvalues[0],xerr,plotvalues[1]);
     gr->SetTitle("Armenteros Podolanski plot from fitting to bins");
-    gr->Draw("AP");
-    
+    gr->Write("AP");
+
+    myFile->Close();
 }
