@@ -1,5 +1,15 @@
 #include <ROOT/RDataFrame.hxx>
-
+// function to fit
+double pT_fit (double* alpha, double* p) {
+    // fix mass of k0 short or pi
+    double M=0.497164;
+    double m=0.13957061;
+    double pT2=pow(M,2.)/4*(1-pow(alpha[0],2.))-pow(p[0],2.);
+    //double pT2=pow(p[0],2.)/4*(1-pow(alpha[0],2.))-pow(m,2.);
+    return sqrt(pT2);
+};
+// calculates pT in every bin of alpha
+// file, tree: name of file and tree with variables calculated for the AP-plot
 void slicing(TString file="APPlot_df.root", TString tree="NewVariables") {
 
     // saving plots in a root file
@@ -8,7 +18,7 @@ void slicing(TString file="APPlot_df.root", TString tree="NewVariables") {
     // get DataFrame out of file 
     ROOT::RDataFrame df(tree, file);
     // define histogram which is the armenteros plot
-    TH2D *h = new TH2D("AP_2D","Armenteros-Podolanski Plot; #alpha; q_{T}; z",100,-1.,1.,100,0.,0.25);
+    TH2D *h = new TH2D("AP_2D","Armenteros-Podolanski Plot; #alpha; q_{T}; z",100,-1.,1.,1000,0.,0.25);
     auto histo = df.Histo2D(*h,"alpha","pT");
     // save number of bins
     int n=histo->GetNbinsX();
@@ -46,7 +56,7 @@ void slicing(TString file="APPlot_df.root", TString tree="NewVariables") {
         std::cout<<"Created projection"<<std::endl;
 
         histo_bin->SetTitle(Form("#alpha=%.2lf",x[i-1]));
-        histo_bin->GetXaxis()->SetTitle("q_{T}");
+        histo_bin->GetXaxis()->SetTitle("q_{T} [GeV/c]");
         histo_bin->GetYaxis()->SetTitle("N");
 
         // use gaus to fit
@@ -73,8 +83,25 @@ void slicing(TString file="APPlot_df.root", TString tree="NewVariables") {
     auto gr = new TGraphErrors(n,x,plotvalues[0],xerr,plotvalues[1]);
     gr->SetTitle("Armenteros Podolanski plot from fitting to bins");
     gr->GetXaxis()->SetTitle("#alpha");
-    gr->GetYaxis()->SetTitle("q_{T}");
+    gr->GetYaxis()->SetTitle("q_{T} [GeV/c]");
     gr->Write("Calculated values");
+
+
+    // add fitting to ellipse
+    // use mass of pion/ k0s to initialize parameter
+    double m= 0.13957061;
+    double M=0.497164;
+    auto *func = new TF1("func",pT_fit,-1,1,1);
+    func->SetParameters(m);
+    // fitting: does not work for larger range
+    gr->Fit(func,"","",-0.8,0.8);
+    // Plot the graph
+    gr->SetTitle("Ellipse fitted to calculated values");
+    gr->GetYaxis()->SetRangeUser(0.,0.21);
+    gr->Write("Fitted graph");
+
+    myFile->Close();
+    
 
 }
 
