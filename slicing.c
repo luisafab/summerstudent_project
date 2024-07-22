@@ -61,6 +61,12 @@ void slicing(TString file="APPlot_df.root", TString tree="NewVariables") {
 
         // use gaus to fit
         TF1 *f2 = new TF1("f2", "gaus");
+        Int_t b_max = histo_bin->GetMaximumBin();
+        Double_t x_max = histo_bin->GetBinCenter(b_max);
+        Double_t y_max = histo_bin->GetBinContent(b_max);
+        f2->SetParameter(0,y_max);
+        f2->SetParameter(1,histo_bin->GetMean());
+        f2->SetParameter(2,histo_bin->GetStdDev());
         histo_bin->Fit(f2);
         std::cout<<"Fitted"<<std::endl;
         histo_bin->Write();
