@@ -43,7 +43,7 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
         float pPlL = pPos.Dot(pV0)/pV0_norm;
         float pNegL = pNeg.Dot(pV0)/pV0_norm;
         // calculate alpha
-        float alpha= (pPlL-pNegL)/((pPlL+pNegL))/0.9;
+        float alpha= (pPlL-pNegL)/((pPlL+pNegL));
 
         return alpha;
     };
