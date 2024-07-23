@@ -2,19 +2,25 @@
 #include <Math/RootFinder.h>
 #include <Math/Functor.h>
 // function to calculate ellipse qT for given masses M and m 
-double qT(double alpha, double M, double m){
-    // including a factor 0.9 to compensate a lower beta at lower pT
-    alpha=alpha*0.9;
+double qT(double alpha, double M, double m, double beta){
+    // including a factor beta to compensate a lower beta at lower pT
+    alpha=alpha*beta;
     return sqrt(pow(M,2.)/4*(1-pow(alpha,2.))-pow(m,2.));
 };
 // distance of given point x,y to ellipse at point alpha
 // euclidean distance: sqrt((x1-x2)^2+(y1-y2)^2)
-double distance(double alpha, double M, double m, double x, double y){
-    double qT_alpha=qT(alpha,M,m);
+double distance(double alpha, double M, double m, double x, double y, double beta){
+    double qT_alpha=qT(alpha,M,m,beta);
     return sqrt(pow((qT_alpha-y),2.)+pow((alpha-x),2.));
 }
+// calculate beta for different pT (pT=m*gamma*beta)
+double beta(double pT){
+    double M=0.497164;
+    return sqrt(1./(pow((M/pT),2.)+1.));
+}
+
 // function to calculate the distance to an ellipse with given m for APPlot saved in data frame with number of bins nx and ny
-double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny){
+double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny, double beta_pT){
     //double M=0.497164;
     // pion mass is fixed for calculation
     double m=0.13957061;
@@ -25,7 +31,7 @@ double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny){
     for (int l=0; l<n; l++){
         double alpha_temp=(-0.9+l*0.01);
         alpha_plot[l]=alpha_temp;
-        qT_plot[l]=qT(alpha_temp,M,m);
+        qT_plot[l]=qT(alpha_temp,M,m,beta_pT);
     }
     auto graph = new TGraph(n,alpha_plot,qT_plot);
     graph->SetTitle("Ellipse fitted to data");
@@ -77,10 +83,10 @@ double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny){
             // First rough iteration to find region of point
             for (int k = 0; k < 10; k++) {
                 alpha_test+=0.1*k;
-                distance_test=distance(alpha_test,M,m,x2,y2);
+                distance_test=distance(alpha_test,M,m,x2,y2,beta_pT);
                 if (distance_test<smallestdistance){
                     smallestdistance=distance_test;
-                    qT_s=qT(alpha_test,M,m);
+                    qT_s=qT(alpha_test,M,m,beta_pT);
                     alpha_s=alpha_test;
                 }
             }
@@ -88,10 +94,10 @@ double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny){
             alpha_test=alpha_s-0.2;
             for (int k = 0; k < 10000; k++) {
                 alpha_test+=0.00004*k;
-                distance_test=distance(alpha_test,M,m,x2,y2);
+                distance_test=distance(alpha_test,M,m,x2,y2,beta_pT);
                 if (distance_test<smallestdistance){
                     smallestdistance=distance_test;
-                    qT_s=qT(alpha_test,M,m);
+                    qT_s=qT(alpha_test,M,m,beta_pT);
                     alpha_s=alpha_test;
                 }
             }
@@ -113,9 +119,12 @@ double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny){
 }
 
 // file, tree: name of file and tree with variables calculated for the AP-plot
-void ellipse_fit(TString file="APPlot_df_lowPt.root", TString tree="NewVariables",TString output="results_ellipse_fit_finerBinning_alpha09.root") {
+void ellipse_fit(TString file="APPlot_df_lowPt.root", TString tree="NewVariables",TString output="results_ellipse_fit_finerBinning_alpha09.root", double pT=4.) {
     //double m=0.13957061;
     double M=0.497164;
+    // calculate beta for given pT to adapt in qT calculation
+    double beta_pT=beta(pT);
+    std::cout<<"calculate qT using beta (pT="<<pT<<") = "<<beta_pT<<std::endl;
     // stop time of the iteration
     TStopwatch watch;
     
@@ -145,7 +154,7 @@ void ellipse_fit(TString file="APPlot_df_lowPt.root", TString tree="NewVariables
         myFile->cd();
         myFile->cd("DifferentMasses");
         M=0.497164-0.08+i*dist;
-        error[i]=fit_ellipse(df,M,nx,ny);
+        error[i]=fit_ellipse(df,M,nx,n,beta_pT);
         masses[i]=M*1000; // MeV
     }
     // plot for different masses 

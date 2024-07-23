@@ -8,7 +8,7 @@
 // string save_file : file to save plots 
 // string snapshot : name of snapshot to save data to
 
-void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root", TString tree="O2v0tableap",bool MC=false, TString file_save="APPlot_lowPt.root", TString snapshot="APPlot_df_lowPt_09.root") {
+void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root", TString tree="O2v0tableap",bool MC=false, TString file_save="APPlot_lowPt.root", TString snapshot="APPlot_df_lowPt_09.root",double pT_low=0.,double pT_high=10.) {
 
     // saving plots in a root file
     std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
@@ -205,6 +205,15 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
     auto outsidePeakL =[&](float Minv){
         return !insidePeakL(Minv);
     };
+    auto insidePtRange =[&](double pT){
+        bool isInside;
+        if (pT>pT_low && pT < pT_high){
+            isInside=true;
+        }else{
+            isInside=false;
+        }
+        return isInside;
+    };
     
     // one filter just to ckeck on lambdas, not needed for the result in the end, just to plot the filter on invariant mass of lambda 
     auto new_filter_l = new_minv_k0.Filter(insidePeakL, {"Minv_lambda"});
@@ -216,7 +225,7 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
     auto new_filter_both = new_filter_k.Filter(outsidePeakL, {"Minv_lambda"});
     std::cout<<"Filter 3"<<std::endl;
     // Filter on pT of V0
-    auto complete_df = new_filter_both.Filter("pTV0 > 0.9 && pTV0 < 1.1");
+    auto complete_df = new_filter_both.Filter(insidePtRange,{"pTV0"});
     std::cout<<"Filter 4"<<std::endl;
 
     // plot pTV0 of all particles after the mass cut and the ones in the chosen range
