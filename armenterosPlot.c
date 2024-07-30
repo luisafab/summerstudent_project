@@ -11,7 +11,7 @@
 void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root", TString tree="O2v0tableap",bool MC=false, TString file_save="APPlot_lowPt.root", TString snapshot="APPlot_df_lowPt_09.root",double pT_low=0.,double pT_high=10.) {
 
     // saving plots in a root file
-    std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
+    //std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
 
     // define used masses
     float massProton=0.9382720813;
@@ -168,10 +168,10 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
     auto hpTV0 = new_minv_k0.Histo1D({"pTV0_before","pT V0; pT [GeV/c]",1000,0.,5.},"pTV0");
 
     // plot invariant mass
-    hL->Write();
-    hK0->Write();
+    //hL->Write();
+    //hK0->Write();
     // and pT
-    hpTV0->Write();
+    //hpTV0->Write();
     
     
     // add filter on calculated invariant mass
@@ -229,38 +229,38 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
     std::cout<<"Filter 4"<<std::endl;
 
     // plot pTV0 of all particles after the mass cut and the ones in the chosen range
-    auto hpTV0_a = complete_df.Histo1D({"pTV0_after","pT V0; pT [GeV/c]",1000,0.,5.},"pTV0");
-    hpTV0_a->Write();
-    auto hpTV0_all = new_filter_both.Histo1D({"pTV0_massCut","pT V0; pT [GeV/c]",1000,0.,5.},"pTV0");
-    hpTV0_all->Write();
+    //auto hpTV0_a = complete_df.Histo1D({"pTV0_after","pT V0; pT [GeV/c]",1000,0.,4.},"pTV0");
+    //hpTV0_a->Write();
+    //auto hpTV0_all = new_filter_both.Histo1D({"pTV0_massCut","pT V0; pT [GeV/c]",1000,0.,5.},"pTV0");
+    //hpTV0_all->Write();*/
 
 
     // define and plot a histogram which is the resulting armenteros plot after appliying the cuts
-    TH2D *h = new TH2D("AP_2D","Armenteros-Podolanski Plot;#alpha;p_{T}",100,-1.,1.,100,0.,0.25);
+    /*TH2D *h = new TH2D("AP_2D","Armenteros-Podolanski Plot;#alpha;p_{T}",100,-1.,1.,100,0.,0.25);
     
     auto histo = complete_df.Histo2D(*h,"alpha","qT");
 
     histo->GetXaxis()->SetTitle("#alpha");
     histo->GetYaxis()->SetTitle("q_{T}");
 
-    histo->Write();
+    histo->Write();*/
     
 
 
     // save snapshot to use tree in next steps
-    complete_df.Snapshot("NewVariables", snapshot ,{"alpha","qT","Minv_lambda","Minv_K0"});
+    complete_df.Snapshot("NewVariables", snapshot ,{"alpha","qT","Minv_lambda","Minv_K0","pTV0"});
 
     // save AP plot before cuts 
-    TH2D *h1 = new TH2D("AP_2D_before","Armenteros-Podolanski Plot before cuts;#alpha;q_{T}",100,-1.,1.,100,0.,0.25);
+    //TH2D *h1 = new TH2D("AP_2D_before","Armenteros-Podolanski Plot before cuts;#alpha;q_{T}",100,-1.,1.,100,0.,0.25);
     
-    auto histo1 = new_filter_both.Histo2D(*h1,"alpha","qT");
+    //auto histo1 = new_filter_both.Histo2D(*h1,"alpha","qT");
 
-    histo1->GetXaxis()->SetTitle("#alpha");
-    histo1->GetYaxis()->SetTitle("q_{T}");
+    //histo1->GetXaxis()->SetTitle("#alpha");
+    //histo1->GetYaxis()->SetTitle("q_{T}");
 
-    histo1->Write();
+    //histo1->Write();
 
-    myFile->Close();
+    //myFile->Close();
 
 }
 
