@@ -20,8 +20,9 @@ double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny, double 
     //double M=0.497164;
     // pion mass is fixed for calculation
     double m=0.13957061;
-    //plot ellipse the data is fitted to
-    int n=180;
+    // plot ellipse the data is fitted to
+    // use if wanted
+    /*int n=180;
     double alpha_plot[n];
     double qT_plot[n];
     for (int l=0; l<n; l++){
@@ -37,7 +38,7 @@ double fit_ellipse (ROOT::RDataFrame df, double M, double nx, double ny, double 
     TAxis *axis = graph->GetXaxis();
     axis->SetLimits(-1.,1.);
     graph->GetHistogram()->SetMinimum(-0.02);
-    graph->GetHistogram()->SetMaximum(0.25);
+    graph->GetHistogram()->SetMaximum(0.25);*/
     //graph->Write(Form("Ellipse_%.6lf",M));
 
     // Histogram for AP Plot
