@@ -9,6 +9,73 @@
 // string snapshot : name of snapshot to save data to
 // float pT_high pT_low: values to cut on pT
 
+// save used constants
+constexpr double kK0sMass{0.497164};
+
+// help functions to calculate the variables of the AP Plot using the momenta of the daughter particles
+// calculates beta of the decaying particle using the toal momentum
+float beta(float ptotal){
+    return sqrt(1./(pow((kK0sMass/ptotal),2.)+1.));
+}
+// total momentum of the mother is the sum of the momenta of the daughters
+float ptotal(float posx, float posy, float posz, float negx, float negy, float negz){
+    float massPos;
+    float massNeg;
+
+    //define vectors for momenta and calclate the length 
+    TVector3 pPos(posx,posy,posz);
+    TVector3 pNeg(negx,negy,negz);
+    TVector3 momentum=pPos+pNeg;
+    float momentum_norm=sqrt(momentum.Dot(momentum));
+
+    return momentum_norm;
+}
+
+// takes the momenta of the negative and positive particle as argument
+float alpha(float posx, float posy, float posz, float negx, float negy, float negz){
+    // create momentum vector for both particles
+    TVector3 pPos(posx,posy,posz);
+    TVector3 pNeg(negx,negy,negz);
+    // the momentum of V0 is the sum of the other two
+    TVector3 pV0 =pPos+pNeg;
+    // normalize pV0
+    float pV0_norm=sqrt(pV0.Dot(pV0));
+    // calculate longitudinal part of pPos and pNeg
+    float pPlL = pPos.Dot(pV0)/pV0_norm;
+    float pNegL = pNeg.Dot(pV0)/pV0_norm;
+    // calculate alpha
+    float alpha= (pPlL-pNegL)/((pPlL+pNegL));
+    float beta_calc=beta(ptotal(posx, posy, posz, negx, negy, negz));
+
+    return alpha/beta_calc;
+}
+
+ // calculate pT of the V0 particle
+float pt_v0(float posx, float posy, float posz, float negx, float negy, float negz){
+    TVector3 pPos(posx,posy,posz);
+    TVector3 pNeg(negx,negy,negz);
+    TVector3 pV0 =pPos+pNeg;
+    float pT=std::hypot(pV0[0],pV0[1]);
+
+    return pT;
+}
+
+float qT(float posx, float posy, float posz, float negx, float negy, float negz){
+    // create momentum vector for both particles
+    TVector3 pPos(posx,posy,posz);
+    TVector3 pNeg(negx,negy,negz);
+    // the momentum of V0 is the sum of the other two
+    TVector3 pV0 =pPos+pNeg;
+    // normalize pV0
+    float pV0_norm=sqrt(pV0.Dot(pV0));
+    // cross product of pPos and pV0
+    TVector3 cross=pPos.Cross(pV0);
+    // calculate qT
+    float qT = (sqrt(cross.Dot(cross)))/pV0_norm;
+
+    return qT;
+}
+
 void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root", TString tree="O2v0tableap",bool MC=false, TString file_save="APPlot_lowPt.root", TString snapshot="APPlot_df_lowPt_09.root",float pT_low=0.,float pT_high=10.) {
 
     // saving plots in a root file
@@ -31,69 +98,6 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
 
     //apply cut on cosPA
     auto df = df_cos.Filter("fCosPA>0.999");
-
-
-    auto beta = [&](float ptotal){
-        return sqrt(1./(pow((M/ptotal),2.)+1.));
-    };
-    auto ptotal = [&](float posx, float posy, float posz, float negx, float negy, float negz){
-        float massPos;
-        float massNeg;
-
-        //define vectors for momenta and calclate the length 
-        TVector3 pPos(posx,posy,posz);
-        TVector3 pNeg(negx,negy,negz);
-        TVector3 momentum=pPos+pNeg;
-        float momentum_norm=sqrt(momentum.Dot(momentum));
-
-        return momentum_norm;
-    };
-    // lambda functions to calculate the variables of the AP Plot: alpha and qT
-    // takes the momenta of the negative and positive particle as argument
-    auto alpha = [&](float posx, float posy, float posz, float negx, float negy, float negz){
-        // create momentum vector for both particles
-        TVector3 pPos(posx,posy,posz);
-        TVector3 pNeg(negx,negy,negz);
-        // the momentum of V0 is the sum of the other two
-        TVector3 pV0 =pPos+pNeg;
-        // normalize pV0
-        float pV0_norm=sqrt(pV0.Dot(pV0));
-        // calculate longitudinal part of pPos and pNeg
-        float pPlL = pPos.Dot(pV0)/pV0_norm;
-        float pNegL = pNeg.Dot(pV0)/pV0_norm;
-        // calculate alpha
-        float alpha= (pPlL-pNegL)/((pPlL+pNegL));
-        float beta_calc=beta(ptotal(posx, posy, posz, negx, negy, negz));
-
-        return alpha/beta_calc;
-    };
-
-    // calculate pT of the V0 particle
-    auto pt_v0 = [&](float posx, float posy, float posz, float negx, float negy, float negz){
-        TVector3 pPos(posx,posy,posz);
-        TVector3 pNeg(negx,negy,negz);
-        TVector3 pV0 =pPos+pNeg;
-        float pT=std::hypot(pV0[0],pV0[1]);
-
-        return pT;
-    };
-
-    auto qT = [&](float posx, float posy, float posz, float negx, float negy, float negz){
-        // create momentum vector for both particles
-        TVector3 pPos(posx,posy,posz);
-        TVector3 pNeg(negx,negy,negz);
-        // the momentum of V0 is the sum of the other two
-        TVector3 pV0 =pPos+pNeg;
-        // normalize pV0
-        float pV0_norm=sqrt(pV0.Dot(pV0));
-        // cross product of pPos and pV0
-        TVector3 cross=pPos.Cross(pV0);
-        // calculate qT
-        float qT = (sqrt(cross.Dot(cross)))/pV0_norm;
-
-        return qT;
-    };
-
 
     // define new columns with the two new variables 
     auto new_column_alpha = df.Define("alpha", alpha, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
