@@ -7,28 +7,47 @@
 //           false : all events are considered
 // string save_file : file to save plots 
 // string snapshot : name of snapshot to save data to
+// float pT_high pT_low: values to cut on pT
 
-void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root", TString tree="O2v0tableap",bool MC=false, TString file_save="APPlot_lowPt.root", TString snapshot="APPlot_df_lowPt_09.root",double pT_low=0.,double pT_high=10.) {
+void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root", TString tree="O2v0tableap",bool MC=false, TString file_save="APPlot_lowPt.root", TString snapshot="APPlot_df_lowPt_09.root",float pT_low=0.,float pT_high=10.) {
 
     // saving plots in a root file
-    //std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
+    std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
 
     // define used masses
     float massProton=0.9382720813;
     float massPion= 0.13957061;
+    float M=0.497164;
 
     // define a data frame to use 
     ROOT::RDataFrame df_MC(tree, file);
     // filter it
-    //     for MC==true only the recombined (isreco==true) lambdas (PDGCODE=3122) are considered
+    //     for MC==true only the recombined (isreco==true) lambdas (PDGCODE=3122) or K0s(310) are considered
     //     else there is a dummy cut to use the same dataframe
     //auto df_cos = df_MC.Filter(MC? "(fPDGCode == 3122 || fPDGCode== -3122) && fIsReco" : "fLen>0");
-    auto df_cos = df_MC.Filter(MC? "fIsReco" : "fLen>0");
+    auto df_cos = df_MC.Filter(MC? "(fPDGCode == 310) && fIsReco" : "fLen>0");
+    //auto df_cos = df_MC.Filter(MC? "fIsReco" : "fLen>0");
     std::cout<<"filtered PDG"<<std::endl;
 
     //apply cut on cosPA
     auto df = df_cos.Filter("fCosPA>0.999");
 
+
+    auto beta = [&](float ptotal){
+        return sqrt(1./(pow((M/ptotal),2.)+1.));
+    };
+    auto ptotal = [&](float posx, float posy, float posz, float negx, float negy, float negz){
+        float massPos;
+        float massNeg;
+
+        //define vectors for momenta and calclate the length 
+        TVector3 pPos(posx,posy,posz);
+        TVector3 pNeg(negx,negy,negz);
+        TVector3 momentum=pPos+pNeg;
+        float momentum_norm=sqrt(momentum.Dot(momentum));
+
+        return momentum_norm;
+    };
     // lambda functions to calculate the variables of the AP Plot: alpha and qT
     // takes the momenta of the negative and positive particle as argument
     auto alpha = [&](float posx, float posy, float posz, float negx, float negy, float negz){
@@ -44,8 +63,9 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
         float pNegL = pNeg.Dot(pV0)/pV0_norm;
         // calculate alpha
         float alpha= (pPlL-pNegL)/((pPlL+pNegL));
+        float beta_calc=beta(ptotal(posx, posy, posz, negx, negy, negz));
 
-        return alpha;
+        return alpha/beta_calc;
     };
 
     // calculate pT of the V0 particle
@@ -53,7 +73,7 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
         TVector3 pPos(posx,posy,posz);
         TVector3 pNeg(negx,negy,negz);
         TVector3 pV0 =pPos+pNeg;
-        double pT=std::hypot(pV0[0],pV0[1]);
+        float pT=std::hypot(pV0[0],pV0[1]);
 
         return pT;
     };
@@ -155,7 +175,7 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
 
         return invariantmass;
     };
-
+    
     // add both masses as new column
     auto new_minv_l = new_column_pT.Define("Minv_lambda", invariantmass_lambda, {"alpha", "fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
     std::cout<<"Calculated inv mass lambda"<<std::endl;
@@ -168,10 +188,10 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
     auto hpTV0 = new_minv_k0.Histo1D({"pTV0_before","pT V0; pT [GeV/c]",1000,0.,5.},"pTV0");
 
     // plot invariant mass
-    //hL->Write();
-    //hK0->Write();
+    hL->Write();
+    hK0->Write();
     // and pT
-    //hpTV0->Write();
+    hpTV0->Write();
     
     
     // add filter on calculated invariant mass
@@ -205,7 +225,7 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
     auto outsidePeakL =[&](float Minv){
         return !insidePeakL(Minv);
     };
-    auto insidePtRange =[&](double pT){
+    auto insidePtRange =[&](float pT){
         bool isInside;
         if (pT>pT_low && pT < pT_high){
             isInside=true;
@@ -225,42 +245,48 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
     auto new_filter_both = new_filter_k.Filter(outsidePeakL, {"Minv_lambda"});
     std::cout<<"Filter 3"<<std::endl;
     // Filter on pT of V0
-    auto complete_df = new_filter_both.Filter(insidePtRange,{"pTV0"});
+    auto new_filter_pT = new_filter_both.Filter(insidePtRange,{"pTV0"});
     std::cout<<"Filter 4"<<std::endl;
-
+    // add beta and ptotal as variables
+    auto new_ptotal = new_filter_pT.Define("ptotal", ptotal, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
+    std::cout<<"Calculated total momentum"<<std::endl;
+    auto complete_df = new_ptotal.Define("beta", beta, {"ptotal"});
+    std::cout<<"Calculated beta using the total momentum of V0s"<<std::endl;
     // plot pTV0 of all particles after the mass cut and the ones in the chosen range
     //auto hpTV0_a = complete_df.Histo1D({"pTV0_after","pT V0; pT [GeV/c]",1000,0.,4.},"pTV0");
     //hpTV0_a->Write();
     //auto hpTV0_all = new_filter_both.Histo1D({"pTV0_massCut","pT V0; pT [GeV/c]",1000,0.,5.},"pTV0");
     //hpTV0_all->Write();*/
+    auto hpT = complete_df.Histo1D({"p_V0","total momentum V0; p_{V0}; counts",1000,0.,8.},"ptotal");
+    hpT->Write();
 
 
     // define and plot a histogram which is the resulting armenteros plot after appliying the cuts
-    /*TH2D *h = new TH2D("AP_2D","Armenteros-Podolanski Plot;#alpha;p_{T}",100,-1.,1.,100,0.,0.25);
+    TH2D *h = new TH2D("AP_2D","Armenteros-Podolanski Plot;#alpha;p_{T}",100,-1.,1.,100,0.,0.25);
     
     auto histo = complete_df.Histo2D(*h,"alpha","qT");
 
     histo->GetXaxis()->SetTitle("#alpha");
     histo->GetYaxis()->SetTitle("q_{T}");
 
-    histo->Write();*/
+    histo->Write();
     
 
 
     // save snapshot to use tree in next steps
-    complete_df.Snapshot("NewVariables", snapshot ,{"alpha","qT","Minv_lambda","Minv_K0","pTV0"});
+    // complete_df.Snapshot("NewVariables", snapshot ,{"alpha","qT","Minv_lambda","Minv_K0","pTV0","ptotal","beta"});
 
     // save AP plot before cuts 
-    //TH2D *h1 = new TH2D("AP_2D_before","Armenteros-Podolanski Plot before cuts;#alpha;q_{T}",100,-1.,1.,100,0.,0.25);
+    TH2D *h1 = new TH2D("AP_2D_before","Armenteros-Podolanski Plot before cuts;#alpha;q_{T}",100,-1.,1.,100,0.,0.25);
     
-    //auto histo1 = new_filter_both.Histo2D(*h1,"alpha","qT");
+    auto histo1 = new_filter_both.Histo2D(*h1,"alpha","qT");
 
-    //histo1->GetXaxis()->SetTitle("#alpha");
-    //histo1->GetYaxis()->SetTitle("q_{T}");
+    histo1->GetXaxis()->SetTitle("#alpha");
+    histo1->GetYaxis()->SetTitle("q_{T}");
 
-    //histo1->Write();
+    histo1->Write();
 
-    //myFile->Close();
+    myFile->Close();
 
 }
 
