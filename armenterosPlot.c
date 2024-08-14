@@ -11,6 +11,8 @@
 
 // save used constants
 constexpr double kK0sMass{0.497164};
+constexpr double kPiMass{0.13957061};
+constexpr double kProtonMass{0.9382720813};
 
 // help functions to calculate the variables of the AP Plot using the momenta of the daughter particles
 // calculates beta of the decaying particle using the toal momentum
@@ -76,15 +78,83 @@ float qT(float posx, float posy, float posz, float negx, float negy, float negz)
     return qT;
 }
 
+// calculation of the invariant mass of lambdas
+float invariantmass_lambda(float alpha, float posx, float posy, float posz, float negx, float negy, float negz){
+    float massPos;
+    float massNeg;
+
+    //define vectors for momenta and calclate the length 
+    TVector3 pPos(posx,posy,posz);
+    TVector3 pNeg(negx,negy,negz);
+    TVector3 momentum=pPos+pNeg;
+    float pPos_norm=sqrt(pPos.Dot(pPos));
+    float pNeg_norm=sqrt(pNeg.Dot(pNeg));
+    float momentum_norm=sqrt(momentum.Dot(momentum));
+
+
+    // use alpha to know the decay and the resulting particles
+    // alpha>0 lambda -> p +pi-
+    // alpha<0 pi+
+    // assign the mass 
+    if (alpha>0){
+        massPos=kProtonMass;
+        massNeg=kPiMass;
+    }
+    else{
+        massPos=kPiMass;
+        massNeg=kProtonMass;
+    }
+
+    // use mass and momentum to calculate the energy of the two particles
+    float EPos=sqrt(pow(pPos_norm,2.)+pow((massPos),2.));
+    float ENeg=sqrt(pow(pNeg_norm,2.)+pow((massNeg),2.));
+
+    // total energy 
+    float Energy = EPos + ENeg;
+
+    // calculate the invariant mass using the fourmomentum vector
+    float invariantmass = sqrt((pow(Energy,2.)-pow(momentum_norm,2.)));
+
+    return invariantmass;
+}
+
+//calculation of the invariant mass of K0s
+float invariantmass_K0(float posx, float posy, float posz, float negx, float negy, float negz){
+    float massPos;
+    float massNeg;
+
+    //define vectors for momenta and calclate the length 
+    TVector3 pPos(posx,posy,posz);
+    TVector3 pNeg(negx,negy,negz);
+    TVector3 momentum=pPos+pNeg;
+    float pPos_norm=sqrt(pPos.Dot(pPos));
+    float pNeg_norm=sqrt(pNeg.Dot(pNeg));
+    float momentum_norm=sqrt(momentum.Dot(momentum));
+
+
+    // decays in pi+ and pi-, masses are equal
+    massPos=kPiMass;
+    massNeg=kPiMass;
+
+    // use mass and momentum to calculate the energy of the two particles
+    float EPos=sqrt(pow(pPos_norm,2.)+pow((massPos),2.));
+    float ENeg=sqrt(pow(pNeg_norm,2.)+pow((massNeg),2.));
+
+    // total energy 
+    float Energy = EPos + ENeg;
+
+    // calculate the invariant mass using the fourmomentum vector
+    float invariantmass = sqrt((pow(Energy,2.)-pow(momentum_norm,2.)));
+
+    return invariantmass;
+}
+
+
+
 void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root", TString tree="O2v0tableap",bool MC=false, TString file_save="APPlot_lowPt.root", TString snapshot="APPlot_df_lowPt_09.root",float pT_low=0.,float pT_high=10.) {
 
     // saving plots in a root file
     std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
-
-    // define used masses
-    float massProton=0.9382720813;
-    float massPion= 0.13957061;
-    float M=0.497164;
 
     // define a data frame to use 
     ROOT::RDataFrame df_MC(tree, file);
@@ -108,77 +178,6 @@ void armenterosPlot(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass
 
     auto new_column_pT = new_column_qT.Define("pTV0", pt_v0, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
     std::cout<<"calculated pT V0"<<std::endl;
-
-    // calculation of the invariant mass of lambdas
-    auto invariantmass_lambda = [&](float alpha, float posx, float posy, float posz, float negx, float negy, float negz){
-        float massPos;
-        float massNeg;
-
-        //define vectors for momenta and calclate the length 
-        TVector3 pPos(posx,posy,posz);
-        TVector3 pNeg(negx,negy,negz);
-        TVector3 momentum=pPos+pNeg;
-        float pPos_norm=sqrt(pPos.Dot(pPos));
-        float pNeg_norm=sqrt(pNeg.Dot(pNeg));
-        float momentum_norm=sqrt(momentum.Dot(momentum));
-
-
-        // use alpha to know the decay and the resulting particles
-        // alpha>0 lambda -> p +pi-
-        // alpha<0 pi+
-        // assign the mass 
-        if (alpha>0){
-            massPos=massProton;
-            massNeg=massPion;
-        }
-        else{
-            massPos=massPion;
-            massNeg=massProton;
-        }
-
-        // use mass and momentum to calculate the energy of the two particles
-        float EPos=sqrt(pow(pPos_norm,2.)+pow((massPos),2.));
-        float ENeg=sqrt(pow(pNeg_norm,2.)+pow((massNeg),2.));
-
-        // total energy 
-        float Energy = EPos + ENeg;
-
-        // calculate the invariant mass using the fourmomentum vector
-        float invariantmass = sqrt((pow(Energy,2.)-pow(momentum_norm,2.)));
-
-        return invariantmass;
-    };
-
-    //calculation of the invariant mass of K0s
-    auto invariantmass_K0 = [&](float posx, float posy, float posz, float negx, float negy, float negz){
-        float massPos;
-        float massNeg;
-
-        //define vectors for momenta and calclate the length 
-        TVector3 pPos(posx,posy,posz);
-        TVector3 pNeg(negx,negy,negz);
-        TVector3 momentum=pPos+pNeg;
-        float pPos_norm=sqrt(pPos.Dot(pPos));
-        float pNeg_norm=sqrt(pNeg.Dot(pNeg));
-        float momentum_norm=sqrt(momentum.Dot(momentum));
-
-
-        // decays in pi+ and pi-, masses are equal
-        massPos=massPion;
-        massNeg=massPion;
-
-        // use mass and momentum to calculate the energy of the two particles
-        float EPos=sqrt(pow(pPos_norm,2.)+pow((massPos),2.));
-        float ENeg=sqrt(pow(pNeg_norm,2.)+pow((massNeg),2.));
-
-        // total energy 
-        float Energy = EPos + ENeg;
-
-        // calculate the invariant mass using the fourmomentum vector
-        float invariantmass = sqrt((pow(Energy,2.)-pow(momentum_norm,2.)));
-
-        return invariantmass;
-    };
     
     // add both masses as new column
     auto new_minv_l = new_column_pT.Define("Minv_lambda", invariantmass_lambda, {"alpha", "fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
