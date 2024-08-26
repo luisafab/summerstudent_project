@@ -30,7 +30,7 @@ double beta_calculation(ROOT::RDataFrame df, double low_pT, double high_pT){
     // divide by number of counts to get new beta
     double beta_pT=sum_beta/totalcounts;
     // calculate the "old" beta (beta for middle of the bin to compare)
-    double old_beta=beta(low_pT+(high_pT-low_pT)/2)
+    double old_beta=beta(low_pT+(high_pT-low_pT)/2);
     // write new and old beta in title
     pTV0->SetTitle(Form("#beta_{old}=%.3lf and #beta_{new}=%.3lf",old_beta,beta_pT));
     // plot PT
