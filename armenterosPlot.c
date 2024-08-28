@@ -16,8 +16,8 @@ constexpr double kProtonMass{0.9382720813};
 
 // help functions to calculate the variables of the AP Plot using the momenta of the daughter particles
 // calculates beta of the decaying particle using the toal momentum
-float beta(float ptotal){
-    return sqrt(1./(pow((kK0sMass/ptotal),2.)+1.));
+float betaCalc(float ptotal){
+    return std::sqrt(1./(std::pow((kK0sMass/ptotal),2.)+1.));
 }
 // total momentum of the mother is the sum of the momenta of the daughters
 float ptotal(float posx, float posy, float posz, float negx, float negy, float negz){
@@ -28,7 +28,7 @@ float ptotal(float posx, float posy, float posz, float negx, float negy, float n
     TVector3 pPos(posx,posy,posz);
     TVector3 pNeg(negx,negy,negz);
     TVector3 momentum=pPos+pNeg;
-    float momentum_norm=sqrt(momentum.Dot(momentum));
+    float momentum_norm=std::sqrt(momentum.Dot(momentum));
 
     return momentum_norm;
 }
@@ -41,7 +41,7 @@ float alpha(float posx, float posy, float posz, float negx, float negy, float ne
     // the momentum of V0 is the sum of the other two
     TVector3 pV0 =pPos+pNeg;
     // normalize pV0
-    float pV0_norm=sqrt(pV0.Dot(pV0));
+    float pV0_norm=std::sqrt(pV0.Dot(pV0));
     // calculate longitudinal part of pPos and pNeg
     float pPlL = pPos.Dot(pV0)/pV0_norm;
     float pNegL = pNeg.Dot(pV0)/pV0_norm;
@@ -68,11 +68,11 @@ float qT_AP(float posx, float posy, float posz, float negx, float negy, float ne
     // the momentum of V0 is the sum of the other two
     TVector3 pV0 = pPos+pNeg;
     // normalize pV0
-    float pV0_norm = sqrt(pV0.Dot(pV0));
+    float pV0_norm = std::sqrt(pV0.Dot(pV0));
     // cross product of pPos and pV0
     TVector3 cross = pPos.Cross(pV0);
     // calculate qT
-    float qT = (sqrt(cross.Dot(cross)))/pV0_norm;
+    float qT = (std::sqrt(cross.Dot(cross)))/pV0_norm;
 
     return qT;
 }
@@ -86,9 +86,9 @@ float invariantmass_lambda(float alpha, float posx, float posy, float posz, floa
     TVector3 pPos(posx,posy,posz);
     TVector3 pNeg(negx,negy,negz);
     TVector3 momentum=pPos+pNeg;
-    float pPos_norm=sqrt(pPos.Dot(pPos));
-    float pNeg_norm=sqrt(pNeg.Dot(pNeg));
-    float momentum_norm=sqrt(momentum.Dot(momentum));
+    float pPos_norm=std::sqrt(pPos.Dot(pPos));
+    float pNeg_norm=std::sqrt(pNeg.Dot(pNeg));
+    float momentum_norm=std::sqrt(momentum.Dot(momentum));
 
 
     // use alpha to know the decay and the resulting particles
@@ -105,14 +105,14 @@ float invariantmass_lambda(float alpha, float posx, float posy, float posz, floa
     }
 
     // use mass and momentum to calculate the energy of the two particles
-    float EPos=sqrt(pow(pPos_norm,2.)+pow((massPos),2.));
-    float ENeg=sqrt(pow(pNeg_norm,2.)+pow((massNeg),2.));
+    float EPos=std::sqrt(std::pow(pPos_norm,2.)+std::pow((massPos),2.));
+    float ENeg=std::sqrt(std::pow(pNeg_norm,2.)+std::pow((massNeg),2.));
 
     // total energy 
     float Energy = EPos + ENeg;
 
     // calculate the invariant mass using the fourmomentum vector
-    float invariantmass = sqrt((pow(Energy,2.)-pow(momentum_norm,2.)));
+    float invariantmass = std::sqrt((std::pow(Energy,2.)-std::pow(momentum_norm,2.)));
 
     return invariantmass;
 }
@@ -126,9 +126,9 @@ float invariantmass_K0(float posx, float posy, float posz, float negx, float neg
     TVector3 pPos(posx,posy,posz);
     TVector3 pNeg(negx,negy,negz);
     TVector3 momentum=pPos+pNeg;
-    float pPos_norm=sqrt(pPos.Dot(pPos));
-    float pNeg_norm=sqrt(pNeg.Dot(pNeg));
-    float momentum_norm=sqrt(momentum.Dot(momentum));
+    float pPos_norm=std::sqrt(pPos.Dot(pPos));
+    float pNeg_norm=std::sqrt(pNeg.Dot(pNeg));
+    float momentum_norm=std::sqrt(momentum.Dot(momentum));
 
 
     // decays in pi+ and pi-, masses are equal
@@ -136,14 +136,14 @@ float invariantmass_K0(float posx, float posy, float posz, float negx, float neg
     massNeg=kPiMass;
 
     // use mass and momentum to calculate the energy of the two particles
-    float EPos=sqrt(pow(pPos_norm,2.)+pow((massPos),2.));
-    float ENeg=sqrt(pow(pNeg_norm,2.)+pow((massNeg),2.));
+    float EPos=std::sqrt(std::pow(pPos_norm,2.)+std::pow((massPos),2.));
+    float ENeg=std::sqrt(std::pow(pNeg_norm,2.)+std::pow((massNeg),2.));
 
     // total energy 
     float Energy = EPos + ENeg;
 
     // calculate the invariant mass using the fourmomentum vector
-    float invariantmass = sqrt((pow(Energy,2.)-pow(momentum_norm,2.)));
+    float invariantmass = std::sqrt((std::pow(Energy,2.)-std::pow(momentum_norm,2.)));
 
     return invariantmass;
 }
@@ -153,16 +153,16 @@ float invariantmass_K0(float posx, float posy, float posz, float negx, float neg
 void armenterosPlot(TString file="Snapshot.root", TString tree="NewVariables") {
 
     // saving plots in a root file
-    std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
+    //std::unique_ptr<TFile> myFile( TFile::Open(file_save, "RECREATE") );
 
     // define a data frame to use 
     ROOT::RDataFrame complete_df(tree, file);
     
     auto hpT = complete_df.Histo1D({"p_V0","total momentum V0; p_{V0}; counts",1000,0.,8.},"ptotal");
-    hpT->Write();
+    //hpT->Write();
     // plot invariant mass after cut
     auto hK0_new = complete_df.Histo1D({"MinvK0","Invariant mass K0; M_{inv}(K_{0}^{s})",1000,0.4,0.55},"Minv_K0");
-    hK0_new->Write();
+    //hK0_new->Write();
 
     // define and plot a histogram which is the resulting armenteros plot after appliying the cuts
     TH2D *h = new TH2D("AP_2D","Armenteros-Podolanski Plot;#alpha;p_{T}",100,-1.,1.,100,0.,0.25);
@@ -172,8 +172,8 @@ void armenterosPlot(TString file="Snapshot.root", TString tree="NewVariables") {
     histo->GetXaxis()->SetTitle("#alpha");
     histo->GetYaxis()->SetTitle("q_{T}");
 
-    histo->Write();
+    //histo->Write();
 
-    myFile->Close();
+    //myFile->Close();
 
 }

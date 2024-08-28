@@ -9,14 +9,15 @@
 //void createDF(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root",TString tree="O2v0tableap", bool MC = false){
 //void createDF(TString file="data/trees_test_k0_newMC.root",TString tree="DF_2263624207437933/O2mcv0tableap", int mode=0){
 void createDF(TString file="data/trees_MC.root",TString tree="DF_2261906121493398/O2mcv0tableap", bool MC=true, bool genDecay=false){
-//void createDF(TString file="trees_MC_genDecay.root",TString tree="mctable", bool MC=true){
+//void createDF(TString file="data/trees_MC.root",TString tree="mctable", bool MC=true, bool genDecay=true){
     
     // define a data frame to use 
     ROOT::RDataFrame df_MC(tree, file);
     // use different momenta for MC and not MC
     vector<basic_string<char> > labels1 = {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"};
     vector<basic_string<char> > labels2 = {"alpha","fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"};
-    if (MC){
+    if (genDecay){
+        std::cout<<"test"<<std::endl;
         labels1 = {"fPxPosMC", "fPyPosMC","fPzPosMC","fPxNegMC", "fPyNegMC","fPzNegMC"};
         labels2 = {"alpha","fPxPosMC", "fPyPosMC","fPzPosMC","fPxNegMC", "fPyNegMC","fPzNegMC"};
     }
@@ -27,7 +28,7 @@ void createDF(TString file="data/trees_MC.root",TString tree="DF_226190612149339
     auto df_cos = df_MC.Filter(MC? "(fPDGCode == 310) && fIsReco" : "fLen>0");
     std::cout<<"filtered PDG"<<std::endl;
     // apply cut on cosPA and dummy cut for gendecay
-    auto df = df_MC.Filter(genDecay? "fPxPosMC>-1000" : "fCosPA>0.999");
+    auto df = df_cos.Filter(genDecay? "fPxPosMC>-1000" : "fCosPA>0.999");
 
     // calculate values
     // variables of AP plot: alpha and qT
@@ -84,7 +85,7 @@ void createDF(TString file="data/trees_MC.root",TString tree="DF_226190612149339
     // add beta and ptotal as variables
     auto new_ptotal = new_filter_both.Define("ptotal", ptotal, labels1);
     std::cout<<"Calculated total momentum"<<std::endl;
-    auto complete_df = new_ptotal.Define("beta", beta, {"ptotal"});
+    auto complete_df = new_ptotal.Define("beta", betaCalc, {"ptotal"});
     std::cout<<"Calculated beta using the total momentum of V0s"<<std::endl;
 
     // generate a random number for to sample data later
@@ -95,12 +96,12 @@ void createDF(TString file="data/trees_MC.root",TString tree="DF_226190612149339
     auto new_column_pT = new_column_random.Define("pTV0", pt_v0, labels1);
     std::cout<<"calculated pT V0"<<std::endl;
     // save dataframe
-    if (MC && genDecay) {
+    if (genDecay) {
         new_column_pT.Snapshot("NewVariables","SnapshotGenDecay.root");
     }else if(MC){
         // calculate also pTreco for MCParticles to compare
-        auto new_column_pTreco = new_column_pT.Define("pTreco", pt_v0, {"fPxPos", "fPyPos","fPzPos","fPxNeg", "fPyNeg","fPzNeg"});
-        new_column_pTreco.Snapshot("NewVariables","SnapshotMC.root");
+        auto new_column_pTgen = new_column_pT.Define("pTgen", pt_v0, {"fPxPosMC", "fPyPosMC","fPzPosMC","fPxNegMC", "fPyNegMC","fPzNegMC"});
+        new_column_pTgen.Snapshot("NewVariables","SnapshotMC.root");
     }else{
         new_column_pT.Snapshot("NewVariables", "test.root");
     }
