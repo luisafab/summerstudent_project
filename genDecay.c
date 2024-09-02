@@ -8,7 +8,7 @@
 #include <ROOT/RDataFrame.hxx>
 #include "armenterosPlot.c"
 
-constexpr int kNtrials{100000000};
+constexpr uint64_t kNtrials{500000000};//500000000
 
 void genDecay() {
   gRandom->SetSeed(1234);
@@ -33,6 +33,27 @@ void genDecay() {
   gr->GetYaxis()->SetTitle("f(p_{T})");
   gr->SetLineWidth(2);
   gr->SetLineColor(1);
+
+  float low_a[] ={0.,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.2,1.4,1.6,1.8,2.0,2.2};
+  float high_a[] = {0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.2,1.4,1.6,1.8,2.0,2.2,2.4};
+  TFile *file = new TFile("pT_shift_new.root","open");
+
+  auto mu_pos_file = (TGraphErrors*)file->Get("mu_data_pos");
+  double *mu_pos_x = mu_pos_file->GetX();
+  double *mu_pos = mu_pos_file->GetY();
+  auto mu_neg_file = (TGraphErrors*)file->Get("mu_data_neg");
+  double *mu_neg_x = mu_neg_file->GetX();
+  double *mu_neg = mu_neg_file->GetY();
+  auto sigma_pos_file = (TGraphErrors*)file->Get("sigma_data_pos");
+  double *sigma_pos_x = sigma_pos_file->GetX();
+  double *sigma_pos = sigma_pos_file->GetY();
+  auto sigma_neg_file = (TGraphErrors*)file->Get("sigma_data_neg");
+  double *sigma_neg_x = sigma_neg_file->GetX();
+  double *sigma_neg = sigma_neg_file->GetY();
+  std::cout<<mu_pos_x[5]<<std::endl;
+  //test->Write();
+
+  std::cout<<"Done"<<std::endl;
   
   // create histograms 
   TH1D hV0Pt("hV0Pt", ";#it{p}_{T} (GeV/#it{c});Entries; Calculated pT", 100, 0.5, 1.5);
@@ -72,20 +93,10 @@ void genDecay() {
   TH1D hPiPPL("hpipPL", ";#it{p}_{L}^{+} (GeV/#it{c});Entries", 100, 0, 2);
   TH1D hPiNPL("hpimPL", ";#it{p}_{L}^{-} (GeV/#it{c});Entries", 100, 0, 2);
 
-
-  // vectors to save variables for RDataFrame
-  //auto pxp_a=new TObjArray();
-  /*float pxp_a[kNtrials];
-  float pxn_a[kNtrials];
-  float pyp_a[kNtrials];
-  float pyn_a[kNtrials];
-  float pzp_a[kNtrials];
-  float pzn_a[kNtrials];*/
-
   
   //TFile f("trees_MC_genDecay.root","recreate");
   //TTree t1("mctable","generated momenta");
-  TFile* f = new TFile("trees_MC_genDecay.root","recreate");
+  TFile* f = new TFile("trees_MC_genDecay_shifted_test.root","recreate");
   TTree* t1 = new TTree("mctable","generated momenta");
   Float_t pxp, pyp, pzp, pxn, pyn, pzn;
   t1->Branch("fPxPosMC",&pxp,"pxp/F");
@@ -94,11 +105,8 @@ void genDecay() {
   t1->Branch("fPxNegMC",&pxn,"pxn/F");
   t1->Branch("fPyNegMC",&pyn,"pyn/F");
   t1->Branch("fPzNegMC",&pzn,"pzn/F");
-
-  // fill the tree
-   // save the Tree heade; the file will be automatically closed
-   // when going out of the function scope
   
+  // apply different shift for different pT regions
   
   // lorentz vectors to save particles
   TLorentzVector mother, pip, pim;
@@ -110,22 +118,28 @@ void genDecay() {
   
   // simulate decay
   // loop over number of trials
-  for (int i=0; i < kNtrials; ++i) {
+  for (uint64_t i=0; i < kNtrials; ++i) {
     // initialise variables 
-    // shift and smirring of 1/pT
-    float pshift=0.;
-    float psmirr=0.;
+    // shift and smirring of pT 
+    // different for positive and negative trakcs
+    /*float pshiftplus=0.;
+    float psmirrplus=0.;
+    float pshiftminus=0.
+    float pshiftminus=0.*/
     // pT eta and phi of mother
     float pT_original=mtExpo.GetRandom();
-    float eta=gRandom->Uniform(-1, 1);
+    if (pT_original<0.3 || pT_original>4.0){
+      continue;
+    }
+    float eta=gRandom->Uniform(-0.8, 0.8);
     float phi=gRandom->Uniform(0, TMath::TwoPi());
 
-    float pT_=1./pT_original;
-    float pT_new=gRandom->Gaus(pT_+pshift,pT_*psmirr);
-    float pT_shift=1/pT_new;
+    //float pT_=1./pT_original;
+    //float pT_new=gRandom->Gaus(pT_+pshift,pT_*psmirr);
+    //float pT_shift=1/pT_new;
 
     // generate mother and decay
-    mother.SetPtEtaPhiM(pT_shift, eta, phi, kK0sMass);
+    mother.SetPtEtaPhiM(pT_original, eta, phi, kK0sMass);
     genPi.SetDecay(mother, 2, massesPi);
     genPi.Generate();
 
@@ -143,26 +157,54 @@ void genDecay() {
     float phiPlus=genPi.GetDecay(0)->Phi();
     float phiMinus=genPi.GetDecay(1)->Phi();
     // get pT of the particles 
-    float pT_pos=1./genPi.GetDecay(0)->Pt();
-    float pT_neg=1./genPi.GetDecay(1)->Pt();
-    float pT_pos_new=gRandom->Gaus(pT_pos+pshift,pT_pos*psmirr);
-    float pT_neg_new=gRandom->Gaus(pT_neg+pshift,pT_neg*psmirr);
-    // use the new 1/pT, eta and phi 
+    float pT_pos=genPi.GetDecay(0)->Pt();
+    float pT_neg=genPi.GetDecay(1)->Pt();
+    if (std::abs(etaPlus)>0.8 || std::abs(etaMinus)>0.8){
+      continue;
+    }
+    // apply shift
+    // shift depends on pT
+    // iterate over array with borders to find interval and find value of mu and sigma
+    int pT_pos_interval=-100;
+    int pT_neg_interval=-100;
+    for (int k=0; k<15; ++k){
+      float low=low_a[k];
+      float high=high_a[k];
+      if (pT_pos<high && pT_pos>low){
+        pT_pos_interval=k;
+      }
+      if (pT_neg<high && pT_neg>low){
+        pT_neg_interval=k;
+      }
+    }
+    float x_pos=mu_pos_x[pT_pos_interval];
+    float x_neg=mu_neg_x[pT_neg_interval];
+    float pshiftplus=mu_pos[pT_pos_interval]*x_pos;
+    float psmirrplus=sigma_pos[pT_pos_interval]*x_pos;
+    float pshiftminus=mu_neg[pT_neg_interval]*x_neg;
+    float psmirrminus=sigma_neg[pT_neg_interval]*x_neg;
+    //float pshift=0.;
+    //float psmirr=0.;
+    //std::cout<<pT_neg<<"  "<<pT_neg_interval<<"  "<<x_neg<<"  "<<pshiftminus<<"  "<<psmirrminus<<std::endl;
+    //return;
+    float pT_pos_new=gRandom->Gaus(pT_pos+pshiftplus,psmirrplus);
+    float pT_neg_new=gRandom->Gaus(pT_neg+pshiftminus,psmirrminus);
+    // use the new pT, eta and phi 
     // assign lorentz vector to generate components 
     TLorentzVector pip_new, pim_new;
-    pip_new.SetPtEtaPhiM(1/pT_pos_new, etaPlus, phiPlus, kPiMass);
-    pim_new.SetPtEtaPhiM(1/pT_neg_new, etaMinus, phiMinus, kPiMass);
+    pip_new.SetPtEtaPhiM(pT_pos_new, etaPlus, phiPlus, kPiMass);
+    pim_new.SetPtEtaPhiM(pT_neg_new, etaMinus, phiMinus, kPiMass);
     pxp=pip_new.Px();
     pxn=pim_new.Px();
     pyp=pip_new.Py();
     pyn=pim_new.Py();
     pzp=pip_new.Pz();
     pzn=pim_new.Pz();
-    // cut on ptotal to make it comparable
+    // exclude low pT to make it comparable with data
     float ptotal_calc=ptotal(pxp,pyp,pzp,pxn,pyn,pzn);
-    /*if (ptotal_calc<0.95 || ptotal_calc>1.05){
+    if (pT_pos<0.2 || pT_neg<0.2){
       continue;
-    }*/
+    }
     // calculate pt of V0 particle 
     float ptV0_calc=pt_v0(pxp,pyp,pzp,pxn,pyn,pzn);
     float alpha_calc=alpha(pxp,pyp,pzp,pxn,pyn,pzn);
@@ -212,7 +254,7 @@ void genDecay() {
   }
   t1->Write();
   
-  std::unique_ptr<TFile> myFile(TFile::Open("genDecay_test.root","RECREATE") );
+  std::unique_ptr<TFile> myFile(TFile::Open("genDecay_shifted_test.root","RECREATE") );
   // create directon for this pT value
   myFile->cd();
   gDirectory->mkdir("components");
