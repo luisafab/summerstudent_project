@@ -1,11 +1,10 @@
 #include <ROOT/RDataFrame.hxx>
-
-
 #include "armenterosPlot.c"
+#include "fitMasses.c"
 
 // do the masscalculation for different pT sampling in one bin to get an uncertainty
-void differentPtMasses(TString file="SnapshotMC_genDecay.root", TString tree="NewVariables") {
-    ROOT::EnableImplicitMT(4);
+void differentPtMasses(TString file="data/SnapshotAP_noMassCut.root", TString tree="NewVariables") {
+    ROOT::EnableImplicitMT(10);
     // variables to save used pT
     double pT;
     double low_pT;
@@ -15,7 +14,7 @@ void differentPtMasses(TString file="SnapshotMC_genDecay.root", TString tree="Ne
     int number;
     
     // save results in file
-    std::unique_ptr<TFile> myFile(TFile::Open("differentPt_Masses_genDecay.root","RECREATE") );
+    std::unique_ptr<TFile> myFile(TFile::Open("differentPt_Masses_AP_final.root","RECREATE") );
     std::cout<<"opened file"<<std::endl;
 
     // set values for the iterations/ binning of pT
@@ -91,24 +90,67 @@ void differentPtMasses(TString file="SnapshotMC_genDecay.root", TString tree="Ne
         myFile->cd("DifferentPt/"+label);
         auto temp_df = df.Filter(insidePtRange,{"pTV0"});
         double mu = *temp_df.Mean("Minv_K0");
+        //auto hK0 = temp_df.Histo1D({"MinvK0","Invariant mass K0; M_{inv}(K_{0}^{s})",200,0.497605,0.497625},"Minv_K0");
+        //0.497613,0.497615
+        //hK0->Write();
         // plot histogram 
-        auto hK0 = temp_df.Histo1D({"MinvK0","Invariant mass K0; M_{inv}(K_{0}^{s})",100,0.497,0.49766},"Minv_K0");
+        auto mass = temp_df.Histo1D({"MinvK0","Invariant mass K0; M_{inv}(K_{S}^{0})",125,0.47,0.52},"Minv_K0");
+        // use gaus to fit
+        /*TF1 *f2 = new TF1("f2", "gaus");
+        Int_t b_max = hK0->GetMaximumBin();
+        Double_t x_max = hK0->GetBinCenter(b_max);
+        Double_t y_max = hK0->GetBinContent(b_max);
+        f2->SetParameter(0,y_max);
+        f2->SetParameter(1,hK0->GetMean());
+        f2->SetParameter(2,hK0->GetStdDev());
+        hK0->Fit(f2);
+        std::cout<<"Fitted"<<std::endl;
+        hK0->Write();*/
+
+        // fit crystalball to data 
+        
+        auto values=fitMasses(*mass);
+        double mean = std::get<0>(values);
+        double err = std::get<1>(values);
+
+        positions[i]=mean*1000;
+        error[i]=err*1000;
+        pTs[i]=pT;
+        
+        
+
+        /*
+        //hK0->Write();
+        // use mean-2sigma as a new fitting range
+        double mean= f2->GetParameter(1);
+        double sigma = f2->GetParameter(2);
+        // second fit
+        hK0->Fit(f2, "R", "", mean-1.*sigma, mean+1.*sigma);
+        std::cout<<"Fitted 2"<<std::endl;
         hK0->Write();
+        // save mean and corresponding error for the plot
         // save values of pT and M (position of minimum)
         pTs[i]=pT;
-        positions[i]=mu;
+        positions[i]=f2->GetParameter(1)*1000;
+        error[i]=f2->GetParError(1)*1000;
+        pTs[i]=pT;
+        positions[i]=mu*1000;
         // outputs to check
         std::cout<<"pT of bin: "<<pT<<std::endl;
         //std::cout<<"beta of pT bin: "<<beta_pT<<std::endl;
+        */
 
     }
     
 
     // plot results 
-    auto gr = new TGraph(n,pTs,positions);
-    gr->SetTitle("Mean of M_{inv}(K^{0})");
-    gr->GetXaxis()->SetTitle("pT [GeV]");
+    auto gr = new TGraphErrors(n,pTs,positions,nullptr,error);
+    gr->SetTitle("Mean of cb fit");
+    gr->GetXaxis()->SetTitle("p_{T} [GeV]");
     gr->GetYaxis()->SetTitle("M [MeV]");
+    gr->SetMarkerStyle(kOpenCircle);
+    gr->SetMarkerColor(kRed);
+    gr->SetLineColor(kRed);
     //gr->SetLineWidth(0);
     //gr->SetMarkerSize(1.5);
     //gr->SetMarkerStyle(70);
