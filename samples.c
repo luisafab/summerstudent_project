@@ -98,8 +98,8 @@ std::tuple<double,double> samples(ROOT::RDataFrame df_all, double low_pT, double
     auto beta_pT=*beta_pT_ptr;
     // want to loop over samples and pT and calculate a AP plot for every bin
     int Nsamples = 50;
-    int nx=150;
-    int ny=150;
+    int nx=200;
+    int ny=200;
     int Nmasses=20;
     // use a TH3D
     TH3D *histogram = new TH3D("AP_3D", "Armenteros-Podolanski Plot;#alpha;q_{T};rnd",nx,-1.,1.,ny,0.,0.25,Nsamples,0.,1.);
@@ -128,7 +128,7 @@ std::tuple<double,double> samples(ROOT::RDataFrame df_all, double low_pT, double
     double calculatedMass[Nsamples];
     double centers[Nsamples];
     // create histogram to plot masses 
-    TH1D *h1 = new TH1D("h1", "Masses for different samples; M [MeV]", 30, 496, 498);
+    TH1D *h1 = new TH1D("h1", "Masses for different samples; M [MeV]", 400, 496, 498);
     // iterate over samples
     for (int s=1; s<=Nsamples; s++){
         // iterate over different masses 
@@ -144,7 +144,7 @@ std::tuple<double,double> samples(ROOT::RDataFrame df_all, double low_pT, double
         auto gr = new TGraph(Nmasses,masses,error);
         gr->SetTitle("Sum of distances for different masses of K^{0}_{s}");
         gr->GetXaxis()->SetTitle("M [MeV]");
-        gr->GetYaxis()->SetTitle("Weighted Distance");
+        gr->GetYaxis()->SetTitle("#Chi^{2}");
         gr->SetLineWidth(0);
         gr->SetMarkerSize(1.5);
         gr->SetMarkerStyle(70);
@@ -152,7 +152,7 @@ std::tuple<double,double> samples(ROOT::RDataFrame df_all, double low_pT, double
         std::cout<<"Fit pol2 to area around the minimum"<<std::endl;
         // try to fit pol2 to mass plot
         TF1 *f1 = new TF1("f1", "pol2");
-        gr->Fit(f1,"","",470.,520.);
+        gr->Fit(f1,"","",467.,524.5);
         double p0 = f1->GetParameter(0);
         double p1 = f1->GetParameter(1);
         double p2 = f1->GetParameter(2);

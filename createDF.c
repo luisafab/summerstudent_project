@@ -8,8 +8,8 @@
 
 //void createDF(TString file="data/AnalysisResults_treesAP_data_LHC22o_apass6_small.root",TString tree="O2v0tableap", bool MC = false){
 //void createDF(TString file="data/trees_test_k0_newMC.root",TString tree="DF_2263624207437933/O2mcv0tableap", int mode=0){
-void createDF(TString file="data/trees_MC.root",TString tree="DF_2261906121493398/O2mcv0tableap", bool MC=true, bool genDecay=false){
-//void createDF(TString file="data/trees_MC.root",TString tree="mctable", bool MC=true, bool genDecay=true){
+//void createDF(TString file="data/trees_MC.root",TString tree="DF_2261906121493398/O2mcv0tableap", bool MC=true, bool genDecay=false){
+void createDF(TString file="trees_MC_genDecay_shifted_final.root",TString tree="mctable", bool MC=false, bool genDecay=true){
     
     // define a data frame to use 
     ROOT::RDataFrame df_MC(tree, file);
@@ -25,7 +25,7 @@ void createDF(TString file="data/trees_MC.root",TString tree="DF_226190612149339
     //     for MC==true only the recombined (isreco==true) lambdas (PDGCODE=3122) or K0s(310) are considered
     //     else there is a dummy cut to use the same dataframe
     //auto df_cos = df_MC.Filter(MC? "(fPDGCode == 3122 || fPDGCode== -3122) && fIsReco" : "fLen>0");
-    auto df_cos = df_MC.Filter(MC? "(fPDGCode == 310) && fIsReco" : "fLen>0");
+    auto df_cos = df_MC.Filter(MC? "(fPDGCode == 310) && fIsReco" : (GenDecay? "fPxPosMC>-1000" : "fLen>0"));
     std::cout<<"filtered PDG"<<std::endl;
     // apply cut on cosPA and dummy cut for gendecay
     auto df = df_cos.Filter(genDecay? "fPxPosMC>-1000" : "fCosPA>0.999");
@@ -97,7 +97,7 @@ void createDF(TString file="data/trees_MC.root",TString tree="DF_226190612149339
     std::cout<<"calculated pT V0"<<std::endl;
     // save dataframe
     if (genDecay) {
-        new_column_pT.Snapshot("NewVariables","SnapshotGenDecay.root");
+        new_column_pT.Snapshot("NewVariables","SnapshotGenDecay_shifted_new.root");
     }else if(MC){
         // calculate also pTreco for MCParticles to compare
         auto new_column_pTgen = new_column_pT.Define("pTgen", pt_v0, {"fPxPosMC", "fPyPosMC","fPzPosMC","fPxNegMC", "fPyNegMC","fPzNegMC"});

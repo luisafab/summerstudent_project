@@ -7,8 +7,8 @@
 #include "samples.c"
 
 // do the masscalculation for different pT sampling in one bin to get an uncertainty
-void differentPtSample(TString file="SnapshotMC.root", TString tree="NewVariables") {
-
+void differentPtSample(TString file="data/SnapshotAP.root", TString tree="NewVariables") {
+    ROOT::EnableImplicitMT(10);
     double m=0.13957061;
     // variables to save data in files
     TString save_df;
@@ -23,7 +23,7 @@ void differentPtSample(TString file="SnapshotMC.root", TString tree="NewVariable
     int number;
     
     // save results in file
-    std::unique_ptr<TFile> myFile(TFile::Open("differentPt_MC_2.root","RECREATE") );
+    std::unique_ptr<TFile> myFile(TFile::Open("differentPt_AP_final.root","RECREATE") );
     std::cout<<"opened file"<<std::endl;
 
     // set values for the iterations/ binning of pT
@@ -118,6 +118,9 @@ void differentPtSample(TString file="SnapshotMC.root", TString tree="NewVariable
     gr->SetTitle("Position of minima");
     gr->GetXaxis()->SetTitle("pT [GeV]");
     gr->GetYaxis()->SetTitle("M [MeV]");
+    gr->SetMarkerStyle(kMultiply);
+    gr->SetMarkerColor(kBlue);
+    gr->SetLineColor(kBlue);
     //gr->SetLineWidth(0);
     //gr->SetMarkerSize(1.5);
     //gr->SetMarkerStyle(70);
